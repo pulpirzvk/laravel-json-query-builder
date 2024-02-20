@@ -82,10 +82,19 @@ class SearchParameter extends AbstractParameter
 
             if ($this->hasSubSearch($key, $value)) {
                 // If query has sub-search, it is a relation for sure.
-                $builder->whereHas(Str::camel($key), function ($query) use ($value) {
-                    $jsonQuery = new JsonQuery($query, $value);
-                    $jsonQuery->search();
-                });
+                if ($this->hasExclamationMark($key)) {
+                    $key = substr($key,1);
+                    $builder->whereDoesntHave(Str::camel($key), function ($query) use ($value) {
+                        $jsonQuery = new JsonQuery($query, $value);
+                        $jsonQuery->search();
+                    });
+                } else {
+                    $builder->whereHas(Str::camel($key), function ($query) use ($value) {
+                        $jsonQuery = new JsonQuery($query, $value);
+                        $jsonQuery->search();
+                    });
+                }
+
                 continue;
             }
 
@@ -130,6 +139,11 @@ class SearchParameter extends AbstractParameter
     protected function hasSubSearch($key, $value): bool
     {
         return is_string($key) && is_array($value);
+    }
+
+    protected function hasExclamationMark($key): bool
+    {
+        return is_string($key) && str_starts_with($key, '!');
     }
 
     /**
